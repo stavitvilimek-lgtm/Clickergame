@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<title>Klikací hra - Web verze</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f4f4f4;
+    text-align: center;
+}
+
+/* Sekce */
+.screen {
+    display: none;
+    padding: 20px;
+}
+
+h1 {
+    font-size: 28px;
+    margin-bottom: 10px;
+}
+
+input {
+    padding: 10px;
+    width: 200px;
+    margin: 5px;
+    border-radius: 8px;
+    border: 1px solid #aaa;
+}
+
+button {
+    padding: 12px 20px;
+    font-size: 18px;
+    margin: 8px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+/* Tlačítka */
+.login-btn, .register-btn {
+    background: #2196F3;
+    color: white;
+}
+
+.click-btn {
+    background: #2979FF;
+    color: white;
+    width: 250px;
+    font-size: 26px;
+    margin-top: 10px;
+}
+
+/* Upgrade tlačítka */
+.upg {
+    display: block;
+    width: 260px;
+    margin: 10px auto;
+    padding: 12px;
+    background: #4CAF50;
+    color: white;
+    font-size: 18px;
+    border-radius: 10px;
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login" class="screen">
+    <h1>Přihlášení</h1>
+    <input id="loginUser" placeholder="Uživatel"><br>
+    <input id="loginPass" placeholder="Heslo" type="password"><br>
+    <button class="login-btn" onclick="login()">Přihlásit</button><br>
+    <button onclick="showRegister()">Registrovat</button>
+    <p id="loginMsg"></p>
+</div>
+
+<!-- REGISTER -->
+<div id="register" class="screen">
+    <h1>Registrace</h1>
+    <input id="regUser" placeholder="Uživatel"><br>
+    <input id="regPass" placeholder="Heslo" type="password"><br>
+    <button class="register-btn" onclick="register()">Vytvořit účet</button><br>
+    <button onclick="showLogin()">Zpět</button>
+    <p id="regMsg"></p>
+</div>
+
+<!-- GAME -->
+<div id="game" class="screen">
+    <h1>Klikací hra</h1>
+    <h3 id="userDisplay"></h3>
+    <h2 id="scoreDisplay">Body: 0</h2>
+    <p id="ppcDisplay">Bodů na klik: 1</p>
+    <p id="cpsDisplay">Bodů za sekundu: 0</p>
+
+    <button class="click-btn" onclick="clickBtn()">KLIKNI!</button>
+
+    <button class="upg" onclick="upgradeClick(1)">+1 bod/klik (Cena: <span id="costC1">10</span>)</button>
+    <button class="upg" onclick="upgradeClick(5)">+5 bodů/klik (Cena: <span id="costC5">50</span>)</button>
+    <button class="upg" onclick="upgradeCPS(1)">+1 bod/sec (Cena: <span id="costS1">25</span>)</button>
+    <button class="upg" onclick="upgradeCPS(5)">+5 bod/sec (Cena: <span id="costS5">100</span>)</button>
+    <button class="upg" onclick="buyMultiplier()">Multiplikátor x2 (Cena: <span id="costM">5000</span>)</button>
+
+    <br><br>
+    <button onclick="logout()">Odhlásit se</button>
+    <button onclick="resetScore()">Reset</button>
+</div>
+
+<script>
+let user = "";
+let score = 0;
+let ppc = 1;
+let cps = 0;
+let multi = 1;
+
+let costC1 = 10;
+let costC5 = 50;
+let costS1 = 25;
+let costS5 = 100;
+let costM  = 5000;
+
+/* Zobrazení sekcí */
+function showLogin(){ hideAll(); login.style.display="block"; }
+function showRegister(){ hideAll(); register.style.display="block"; }
+function showGame(){ hideAll(); game.style.display="block"; }
+function hideAll(){ login.style.display=register.style.display=game.style.display="none"; }
+
+/* Registrace */
+function register(){
+    let u = regUser.value;
+    let p = regPass.value;
+
+    if(localStorage.getItem("pass_"+u)){
+        regMsg.innerText = "Uživatel již existuje!";
+        return;
+    }
+
+    localStorage.setItem("pass_"+u, p);
+    regMsg.innerText = "Účet vytvořen!";
+}
+
+/* Login */
+function login(){
+    let u = loginUser.value;
+    let p = loginPass.value;
+
+    if(localStorage.getItem("pass_"+u) !== p){
+        loginMsg.innerText = "Špatné údaje!";
+        return;
+    }
+
+    user = u;
+    load();
+    showGame();
+    userDisplay.innerText = "Uživatel: " + user;
+}
+
+/* Click */
+function clickBtn(){
+    score += ppc * multi;
+    save();
+    update();
+}
+
+/* UPGRADE CLICK */
+function upgradeClick(amount){
+    let cost = amount === 1 ? costC1 : costC5;
+    if(score < cost) return;
+
+    score -= cost;
+    ppc += amount;
+    if(amount === 1) costC1 = Math.floor(costC1 * 1.5);
+    else costC5 = Math.floor(costC5 * 1.5);
+
+    save();
+    update();
+}
+
+/* UPGRADE CPS */
+function upgradeCPS(amount){
+    let cost = amount === 1 ? costS1 : costS5;
+    if(score < cost) return;
+
+    score -= cost;
+    cps += amount;
+    if(amount === 1) costS1 = Math.floor(costS1 * 1.5);
+    else costS5 = Math.floor(costS5 * 1.5);
+
+    save();
+    update();
+}
+
+/* Multiplikátor */
+function buyMultiplier(){
+    if(score < costM) return;
+    score -= costM;
+    multi *= 2;
+    costM = Math.floor(costM * 2.5);
+
+    save();
+    update();
+}
+
+/* Auto CPS */
+setInterval(()=>{
+    score += cps;
+    save();
+    update();
+},1000);
+
+/* Uložení */
+function save(){
+    localStorage.setItem("score_"+user, score);
+    localStorage.setItem("ppc_"+user, ppc);
+    localStorage.setItem("cps_"+user, cps);
+    localStorage.setItem("multi_"+user, multi);
+
+    localStorage.setItem("costC1_"+user, costC1);
+    localStorage.setItem("costC5_"+user, costC5);
+    localStorage.setItem("costS1_"+user, costS1);
+    localStorage.setItem("costS5_"+user, costS5);
+    localStorage.setItem("costM_"+user, costM);
+}
+
+/* Načtení */
+function load(){
+    score = Number(localStorage.getItem("score_"+user)) || 0;
+    ppc   = Number(localStorage.getItem("ppc_"+user)) || 1;
+    cps   = Number(localStorage.getItem("cps_"+user)) || 0;
+    multi = Number(localStorage.getItem("multi_"+user)) || 1;
+
+    costC1 = Number(localStorage.getItem("costC1_"+user)) || 10;
+    costC5 = Number(localStorage.getItem("costC5_"+user)) || 50;
+    costS1 = Number(localStorage.getItem("costS1_"+user)) || 25;
+    costS5 = Number(localStorage.getItem("costS5_"+user)) || 100;
+    costM  = Number(localStorage.getItem("costM_"+user))  || 5000;
+
+    update();
+}
+
+/* Update UI */
+function update(){
+    scoreDisplay.innerText = "Body: " + score;
+    ppcDisplay.innerText   = "Bodů na klik: " + ppc;
+    cpsDisplay.innerText   = "Bodů za sekundu: " + cps;
+
+    costC1.innerText = costC1;
+    costC5.innerText = costC5;
+    costS1.innerText = costS1;
+    costS5.innerText = costS5;
+    costM.innerText  = costM;
+}
+
+/* Reset */
+function resetScore(){
+    score=0; ppc=1; cps=0; multi=1;
+    costC1=10; costC5=50; costS1=25; costS5=100; costM=5000;
+    save(); update();
+}
+
+/* Odhlášení */
+function logout(){
+    user="";
+    showLogin();
+}
+
+showLogin();
+</script>
+</body>
+</html>
